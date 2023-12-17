@@ -220,7 +220,6 @@ gdf_stations.crs = "epsg:4326"
 gdf_stations = gdf_stations.to_crs(epsg=3857)
 
 # Create LineStrings for each track
-# This depends on how your data is structured, but here's a general approach
 lines = []
 for line_id in expanded_df['line_id'].unique():
     line_stations = expanded_df[expanded_df['line_id'] == line_id]
@@ -235,19 +234,17 @@ gdf_lines = gdf_lines.to_crs(epsg=3857)
 # Plotting
 fig, ax = plt.subplots(figsize=(10, 10))
 
-# Plot the lines
-gdf_lines.plot(ax=ax, linewidth=0.5, color='blue')
+# Plot the lines with a lower zorder
+gdf_lines.plot(ax=ax, linewidth=2, color='blue', zorder=1)
 
-# Plot the stations
-gdf_stations.plot(ax=ax, color='blue', edgecolor='k', markersize=20)
+# Plot the stations with a higher zorder to ensure they are on top
+gdf_stations.plot(ax=ax, color='blue', edgecolor='white', markersize=50, zorder=2)
 
 # Add basemap
 ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
 
-# Adjust the map extent
-ax.set_xlim(gdf_stations.total_bounds[[0, 2]])
-ax.set_ylim(gdf_stations.total_bounds[[1, 3]])
-
-plt.savefig('map_plot.png')
+# Save the figure to a file that is accessible in this environment
+plt.savefig('./map_plot.png')
 plt.close()
+
 
