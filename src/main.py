@@ -10,6 +10,7 @@ from shapely.wkt import loads # convert geometry to coordinates
 from pyproj import Proj, transform # create edge weight
 import contextily as ctx # use map layer
 import geopandas as gpd
+from shapely.geometry import LineString
 
 cities = pd.read_csv('../data/cities.csv')
 stations = pd.read_csv('../data/stations.csv')
@@ -208,27 +209,44 @@ plt.close()
 #_____________________________________#
 
 # Create a GeoDataFrame
-gdf = gpd.GeoDataFrame(
-    expanded_df, 
+# Create a GeoDataFrame for the stations
+gdf_stations = gpd.GeoDataFrame(
+    expanded_df,
     geometry=gpd.points_from_xy(expanded_df.longitude, expanded_df.latitude)
 )
+gdf_stations.crs = "epsg:4326"
 
-# Set the coordinate reference system (CRS) to WGS84 (epsg:4326)
-gdf.crs = "epsg:4326"
+# Convert to Web Mercator
+gdf_stations = gdf_stations.to_crs(epsg=3857)
 
-# Convert the GeoDataFrame to Web Mercator for compatibility with contextily basemap
-gdf = gdf.to_crs(epsg=3857)
+# Create LineStrings for each track
+# This depends on how your data is structured, but here's a general approach
+lines = []
+for line_id in expanded_df['line_id'].unique():
+    line_stations = expanded_df[expanded_df['line_id'] == line_id]
+    if len(line_stations) > 1:
+        line_geometry = LineString(zip(line_stations.longitude, line_stations.latitude))
+        lines.append({'geometry': line_geometry, 'line_id': line_id})
+
+# Create a GeoDataFrame for the lines
+gdf_lines = gpd.GeoDataFrame(lines, crs="epsg:4326")
+gdf_lines = gdf_lines.to_crs(epsg=3857)
 
 # Plotting
 fig, ax = plt.subplots(figsize=(10, 10))
-gdf.plot(ax=ax, color='blue', edgecolor='k')
 
-# Add basemap using OpenStreetMap
+# Plot the lines
+gdf_lines.plot(ax=ax, linewidth=0.5, color='blue')
+
+# Plot the stations
+gdf_stations.plot(ax=ax, color='blue', edgecolor='k', markersize=20)
+
+# Add basemap
 ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
 
 # Adjust the map extent
-ax.set_xlim(gdf.total_bounds[[0, 2]])
-ax.set_ylim(gdf.total_bounds[[1, 3]])
+ax.set_xlim(gdf_stations.total_bounds[[0, 2]])
+ax.set_ylim(gdf_stations.total_bounds[[1, 3]])
 
 plt.savefig('map_plot.png')
 plt.close()
