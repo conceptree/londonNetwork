@@ -17,6 +17,22 @@ stations = pd.read_csv('../data/stations.csv')
 lines = pd.read_csv('../data/lines.csv')
 systems = pd.read_csv('../data/systems.csv')
 station_lines = pd.read_csv('../data/station_lines.csv')
+transport_modes = pd.read_csv('../data/transport_modes.csv')
+
+modes_colors = {
+    'default': '#000000',  # Black
+    'high_speed_rail': '#FF0000',  # Bright Red
+    'inter_city_rail': '#FFFF00',  # Bright Yellow
+    'commuter_rail': '#00FF00',  # Bright Green
+    'heavy_rail': '#0000FF',  # Bright Blue
+    'light_rail': '#FF00FF',  # Magenta
+    'brt': '#00FFFF',  # Cyan
+    'people_mover': '#FFA500',  # Orange
+    'bus': '#800080',  # Purple
+    'tram': '#FFC0CB',  # Light Pink
+    'ferry': '#A52A2A'  # Brown
+}
+
 
 # View first five rows of each dataset
 print(cities.head())
@@ -77,7 +93,7 @@ def extract_coordinates(point_str):
     point = loads(point_str)
     return point.x, point.y
 
-df_temp2['latitude'], df_temp2['longitude'] = zip(*df_temp2['geometry'].apply(extract_coordinates))
+df_temp2['longitude'], df_temp2['latitude'] = zip(*df_temp2['geometry'].apply(extract_coordinates))
 
 # Join Dataset with Lines
 
@@ -101,7 +117,7 @@ df.info()
 
 # Remove Columns not needed
 
-df.drop(['city_id_x','coords','start_year','url_name_x','country_state','length','created_at','updated_at','fromyear','toyear','deprecated_line_group', 'url_name_y', 'color', 'transport_mode_id'], axis=1, inplace=True)
+df.drop(['city_id_x','coords','start_year','url_name_x','country_state','length','created_at','updated_at','fromyear','toyear','deprecated_line_group', 'url_name_y', 'color'], axis=1, inplace=True)
 
 # Confirm columns removal
 
@@ -126,7 +142,7 @@ london.info()
 
 # Aggregate data by City Name and Station ID
 
-agrregated_city_df = london.groupby(['city_name', 'station_id', 'latitude', 'longitude'], as_index=False).agg({'station_id':'first', 'line_id':lambda x: ', '.join(map(str, x))})
+agrregated_city_df = london.groupby(['city_name', 'station_id', 'latitude', 'longitude', 'transport_mode_id'], as_index=False).agg({'station_id':'first', 'line_id':lambda x: ', '.join(map(str, x))})
 
 # View columns data
 
@@ -210,11 +226,18 @@ plt.close()
 
 # Create a GeoDataFrame
 # Create a GeoDataFrame for the stations
+# Merge expanded_df with transport_modes to get the names of transport modes
+expanded_df = expanded_df.merge(transport_modes[['id', 'name']], left_on='transport_mode_id', right_on='id', how='left')
+
+# Map the transport mode names to colors
+expanded_df['color'] = expanded_df['name'].map(modes_colors)
+
+# Create GeoDataFrame for stations
 gdf_stations = gpd.GeoDataFrame(
     expanded_df,
-    geometry=gpd.points_from_xy(expanded_df.longitude, expanded_df.latitude)
+    geometry=gpd.points_from_xy(expanded_df.longitude, expanded_df.latitude),
+    crs="EPSG:4326"
 )
-gdf_stations.crs = "epsg:4326"
 
 # Convert to Web Mercator
 gdf_stations = gdf_stations.to_crs(epsg=3857)
@@ -225,26 +248,27 @@ for line_id in expanded_df['line_id'].unique():
     line_stations = expanded_df[expanded_df['line_id'] == line_id]
     if len(line_stations) > 1:
         line_geometry = LineString(zip(line_stations.longitude, line_stations.latitude))
-        lines.append({'geometry': line_geometry, 'line_id': line_id})
+        lines.append({'geometry': line_geometry, 'line_id': line_id, 'color': line_stations['color'].iloc[0]})
 
-# Create a GeoDataFrame for the lines
-gdf_lines = gpd.GeoDataFrame(lines, crs="epsg:4326")
+# Create GeoDataFrame for the lines
+gdf_lines = gpd.GeoDataFrame(lines, crs="EPSG:4326")
 gdf_lines = gdf_lines.to_crs(epsg=3857)
 
 # Plotting
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots(figsize=(40, 40))
 
-# Plot the lines with a lower zorder
-gdf_lines.plot(ax=ax, linewidth=2, color='blue', zorder=1)
+# Plot lines with colors
+for _, row in gdf_lines.iterrows():
+    ax.plot(*row['geometry'].xy, color=row['color'], linewidth=2, zorder=1)
 
-# Plot the stations with a higher zorder to ensure they are on top
-gdf_stations.plot(ax=ax, color='blue', edgecolor='white', markersize=50, zorder=2)
+# Plot stations
+gdf_stations.plot(ax=ax, color='blue', edgecolor='blue', markersize=50, zorder=2)
 
 # Add basemap
-ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
+ctx.add_basemap(ax, crs=gdf_stations.crs.to_string(), source=ctx.providers.OpenStreetMap.Mapnik)
 
-# Save the figure to a file that is accessible in this environment
+ax.set_axis_off()
+
+# Save and show the figure
 plt.savefig('./map_plot.png')
 plt.close()
-
-
