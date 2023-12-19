@@ -11,6 +11,7 @@ from pyproj import Proj, transform # create edge weight
 import contextily as ctx # use map layer
 import geopandas as gpd
 from shapely.geometry import LineString
+from pyproj import Transformer
 
 cities = pd.read_csv('../data/cities.csv')
 stations = pd.read_csv('../data/stations.csv')
@@ -168,9 +169,8 @@ expanded_df.info()
 
 # Function to transform latitude and longitude to projected coordinates
 def latlon_to_xy(lat, lon):
-    in_proj = Proj('epsg:4326')  # WGS84
-    out_proj = Proj('epsg:3857')  # Web Mercator
-    x, y = transform(in_proj, out_proj, lon, lat)
+    transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
+    x, y = transformer.transform(lon, lat)
     return x, y
 
 #_____________________________________#
@@ -206,9 +206,19 @@ for i, row in expanded_df.iterrows():
     G.add_node(row['station_id'], line=row['line_id'], latitude=row['latitude'], longitude=row['longitude'])
     if i > 0:
         prev_row = expanded_df.iloc[i - 1]
-        if(prev_row["station_id"] != row["station_id"]):
+        if prev_row["station_id"] != row["station_id"]:
             distance = haversine_distance(row['latitude'], row['longitude'], prev_row['latitude'], prev_row['longitude'])
             G.add_edge(row['station_id'], prev_row['station_id'], weight=distance)
+
+# Calculate shortest paths after constructing the graph
+shortest_path_lengths = dict(nx.all_pairs_shortest_path_length(G))
+
+# Example of printing shortest path lengths between specific nodes
+# You can adjust the printing part according to your needs
+for node1 in G.nodes():
+    for node2 in G.nodes():
+        if node1 != node2:
+            print(f"Shortest path between {node1} & {node2}: {shortest_path_lengths[node1][node2]}")
 
 # Create a new figure for the graph
 plt.figure(figsize=(50, 50))
@@ -220,6 +230,21 @@ nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
 plt.axis('equal')
 plt.savefig('graph_plot.png')
 plt.close()
+
+#_____________________________________#
+#___________Graph Metrics_____________#
+#_____________________________________#
+
+number_of_nodes = G.number_of_nodes();
+number_of_edges = G.number_of_edges();
+print("________________")
+print("Nodes: ", number_of_nodes, "Edges: ", number_of_nodes)
+print("________________")
+
+degree_avg = np.mean([d for _, d in G.degree()])
+print("________________")
+print("Degree Average: ", degree_avg)
+print("________________")
 
 #_____________________________________#
 #_____________________________________#
