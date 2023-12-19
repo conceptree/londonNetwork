@@ -206,13 +206,14 @@ for i, row in expanded_df.iterrows():
     G.add_node(row['station_id'], line=row['line_id'], latitude=row['latitude'], longitude=row['longitude'])
     if i > 0:
         prev_row = expanded_df.iloc[i - 1]
-        distance = haversine_distance(row['latitude'], row['longitude'], prev_row['latitude'], prev_row['longitude'])
-        G.add_edge(row['station_id'], prev_row['station_id'], weight=distance)
+        if(prev_row["station_id"] != row["station_id"]):
+            distance = haversine_distance(row['latitude'], row['longitude'], prev_row['latitude'], prev_row['longitude'])
+            G.add_edge(row['station_id'], prev_row['station_id'], weight=distance)
 
 # Create a new figure for the graph
-plt.figure(figsize=(10, 10))
+plt.figure(figsize=(50, 50))
 # Draw the graph
-pos = {node: latlon_to_xy(data['longitude'], data['latitude']) for node, data in G.nodes(data=True)}
+pos = {node: latlon_to_xy(data['latitude'], data['longitude']) for node, data in G.nodes(data=True)}
 nx.draw_networkx(G, pos, with_labels=True, node_size=50, width=0.5)
 labels = nx.get_edge_attributes(G, 'weight')
 nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
