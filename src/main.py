@@ -22,14 +22,14 @@ transport_modes = pd.read_csv('../data/transport_modes.csv')
 modes_colors = {
     'default': '#000000',  # Black
     'high_speed_rail': '#FF0000',  # Bright Red
-    'inter_city_rail': '#FFFF00',  # Bright Yellow
+    'inter_city_rail': 'teal',  # Bright Yellow
     'commuter_rail': '#00FF00',  # Bright Green
     'heavy_rail': '#0000FF',  # Bright Blue
     'light_rail': '#FF00FF',  # Magenta
-    'brt': '#00FFFF',  # Cyan
+    'brt': '#FFC0CB',  # Light Pink
     'people_mover': '#FFA500',  # Orange
     'bus': '#800080',  # Purple
-    'tram': '#FFC0CB',  # Light Pink
+    'tram': '#00FFFF',  # Cyan
     'ferry': '#A52A2A'  # Brown
 }
 
@@ -212,7 +212,7 @@ for i, row in expanded_df.iterrows():
 # Create a new figure for the graph
 plt.figure(figsize=(10, 10))
 # Draw the graph
-pos = {node: latlon_to_xy(data['latitude'], data['longitude']) for node, data in G.nodes(data=True)}
+pos = {node: latlon_to_xy(data['longitude'], data['latitude']) for node, data in G.nodes(data=True)}
 nx.draw_networkx(G, pos, with_labels=True, node_size=50, width=0.5)
 labels = nx.get_edge_attributes(G, 'weight')
 nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
@@ -261,11 +261,15 @@ fig, ax = plt.subplots(figsize=(40, 40))
 for _, row in gdf_lines.iterrows():
     ax.plot(*row['geometry'].xy, color=row['color'], linewidth=2, zorder=1)
 
-# Plot stations
-gdf_stations.plot(ax=ax, color='blue', edgecolor='blue', markersize=50, zorder=2)
+# Ensure the color is correctly mapped to the stations
+gdf_stations['color'] = gdf_stations['name'].map(modes_colors)
+
+# Plot stations with colors based on transport modes using scatter
+for _, row in gdf_stations.iterrows():
+    ax.scatter(row.geometry.x, row.geometry.y, color=row['color'], s=50, zorder=2, edgecolor='white')
 
 # Add basemap
-ctx.add_basemap(ax, crs=gdf_stations.crs.to_string(), source=ctx.providers.OpenStreetMap.Mapnik)
+ctx.add_basemap(ax, crs=gdf_stations.crs.to_string(), source=ctx.providers.CartoDB.Positron)
 
 ax.set_axis_off()
 
