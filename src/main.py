@@ -211,14 +211,14 @@ for i, row in expanded_df.iterrows():
             G.add_edge(row['station_id'], prev_row['station_id'], weight=distance)
 
 # Calculate shortest paths after constructing the graph
-shortest_path_lengths = dict(nx.all_pairs_shortest_path_length(G))
+shortest_path_lengths_alt = dict(nx.all_pairs_shortest_path_length(G))
 
 # Example of printing shortest path lengths between specific nodes
 # You can adjust the printing part according to your needs
 for node1 in G.nodes():
     for node2 in G.nodes():
         if node1 != node2:
-            print(f"Shortest path between {node1} & {node2}: {shortest_path_lengths[node1][node2]}")
+            print(f"Shortest path between {node1} & {node2}: {shortest_path_lengths_alt[node1][node2]}")
 
 # Create a new figure for the graph
 plt.figure(figsize=(50, 50))
@@ -234,7 +234,7 @@ plt.close()
 #_____________________________________#
 #___________Graph Metrics_____________#
 #_____________________________________#
-
+shortest_path_lengths = dict(nx.all_pairs_shortest_path_length(G))
 number_of_nodes = G.number_of_nodes();
 number_of_edges = G.number_of_edges();
 print("________________")
@@ -246,9 +246,127 @@ print("________________")
 print("Degree Average: ", degree_avg)
 print("________________")
 
-#_____________________________________#
-#_____________________________________#
-#_____________________________________#
+diameter = max(nx.eccentricity(G, sp=shortest_path_lengths).values())
+print("________________")
+print("Network Diameter: ", diameter)
+print("________________")
+
+# Compute the average shortest path length for each node
+average_path_lengths = [
+    np.mean(list(spl.values())) for spl in shortest_path_lengths.values()
+]
+# The average over all nodes
+path_lengths_avg = np.mean(average_path_lengths)
+print("________________")
+print("Path Lengths Average: ", path_lengths_avg)
+print("________________")
+
+density = nx.density(G)
+print("________________")
+print("Density: ", density)
+print("________________")
+
+connected = nx.number_connected_components(G)
+print("________________")
+print("Connected Components: ", connected)
+print("________________")
+
+degree_centrality = nx.centrality.degree_centrality(
+    G
+)  # save results in a variable to use again
+(sorted(degree_centrality.items(), key=lambda item: item[1], reverse=True))[:8]
+print("________________")
+print("Degree Centrality: ", degree_centrality)
+print("________________")
+
+sorted_degree = (sorted(G.degree, key=lambda item: item[1], reverse=True))[:8]
+print("________________")
+print("Sorted Degree Centrality: ", sorted_degree)
+print("________________")
+
+betweenness_centrality = nx.centrality.betweenness_centrality(
+    G
+)  # save results in a variable to use again
+(sorted(betweenness_centrality.items(), key=lambda item: item[1], reverse=True))[:8]
+
+print("________________")
+print("Betweenness Centrality: ", betweenness_centrality)
+print("________________")
+#___________________________________________________#
+#________Network Path Lengths Visualization_________#
+#___________________________________________________#
+
+# We know the maximum shortest path length (the diameter), so create an array
+# to store values from 0 up to (and including) diameter
+path_lengths = np.zeros(diameter + 1, dtype=int)
+
+# Extract the frequency of shortest path lengths between two nodes
+for pls in shortest_path_lengths.values():
+    pl, cnts = np.unique(list(pls.values()), return_counts=True)
+    path_lengths[pl] += cnts
+
+# Express frequency distribution as a percentage (ignoring path lengths of 0)
+freq_percent = 100 * path_lengths[1:] / path_lengths[1:].sum()
+
+# Plot the frequency distribution (ignoring path lengths of 0) as a percentage
+fig, ax = plt.subplots(figsize=(15, 8))
+ax.bar(np.arange(1, diameter + 1), height=freq_percent)
+ax.set_title(
+    "Distribution of shortest path length in G", fontdict={"size": 35}, loc="center"
+)
+ax.set_xlabel("Shortest Path Length", fontdict={"size": 22})
+ax.set_ylabel("Frequency (%)", fontdict={"size": 22})
+plt.savefig('./path_lengths_visualization.png')
+plt.close()
+
+#____________________________________________________________________#
+#_____________Degree Centrality Visualization________________________#
+#____________________________________________________________________#
+plt.figure(figsize=(15, 8))
+plt.hist(degree_centrality.values(), bins=25)
+plt.xticks(ticks=[0, 0.00025, 0.0005, 0.001, 0.0015, 0.002])  # set the x axis ticks
+plt.title("Degree Centrality Histogram ", fontdict={"size": 35}, loc="center")
+plt.xlabel("Degree Centrality", fontdict={"size": 20})
+plt.ylabel("Counts", fontdict={"size": 20})
+plt.savefig('./degree_centrality_visualization.png')
+plt.close()
+
+#____________________________________________________________________#
+#______________Top Degree Centrality Visualization___________________#
+#____________________________________________________________________#
+
+node_size = [
+    v * 1000 for v in degree_centrality.values()
+]  # set up nodes size for a nice graph representation
+plt.figure(figsize=(15, 8))
+nx.draw_networkx(G, pos=pos, node_size=node_size, with_labels=False, width=0.15)
+plt.axis("off")
+plt.savefig('./top_degree_centrality_visualization.png')
+plt.close()
+#_____________________________________________________________________#
+#_____________Betweenness Centrality Visualization____________________#
+#_____________________________________________________________________#
+
+plt.figure(figsize=(15, 8))
+plt.hist(betweenness_centrality.values(), bins=100)
+plt.xticks(ticks=[0, 0.02, 0.1, 0.2, 0.3, 0.4, 0.5])  # set the x axis ticks
+plt.title("Betweenness Centrality Histogram ", fontdict={"size": 35}, loc="center")
+plt.xlabel("Betweenness Centrality", fontdict={"size": 20})
+plt.ylabel("Counts", fontdict={"size": 20})
+plt.savefig('./betweenness_centrality_visualization.png')
+plt.close()
+#__________________________________________________________________________________#
+#_________________________Betweenness Centralities Visualization___________________#
+#__________________________________________________________________________________#
+
+node_size = [
+    v * 1200 for v in betweenness_centrality.values()
+]  # set up nodes size for a nice graph representation
+plt.figure(figsize=(15, 8))
+nx.draw_networkx(G, pos=pos, node_size=node_size, with_labels=False, width=0.15)
+plt.axis("off")
+plt.savefig('./betweenness_centralities_visualization.png')
+plt.close()
 
 # Create a GeoDataFrame
 # Create a GeoDataFrame for the stations
