@@ -12,6 +12,7 @@ import contextily as ctx # use map layer
 import geopandas as gpd
 from shapely.geometry import LineString
 from pyproj import Transformer
+from random import randint
 
 cities = pd.read_csv('../data/cities.csv')
 stations = pd.read_csv('../data/stations.csv')
@@ -157,6 +158,8 @@ agrregated_city_df['line_id'] = agrregated_city_df['line_id'].apply(lambda x: x.
 
 expanded_df = agrregated_city_df.explode('line_id').reset_index(drop = True)
 
+expanded_df.dropna();
+
 expanded_df.head(20)
 
 expanded_df.info()
@@ -192,7 +195,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     # Calculate distance
     distance = R * c
-    return distance
+    return round(distance, 2)
 
 #_____________________________________#
 #_____________________________________#
@@ -292,6 +295,74 @@ betweenness_centrality = nx.centrality.betweenness_centrality(
 print("________________")
 print("Betweenness Centrality: ", betweenness_centrality)
 print("________________")
+
+closeness_centrality = nx.centrality.closeness_centrality(
+    G
+)  # save results in a variable to use again
+(sorted(closeness_centrality.items(), key=lambda item: item[1], reverse=True))[:8]
+
+print("________________")
+print("Closeness Centrality: ", closeness_centrality)
+print("________________")
+
+average_distance = 1 / closeness_centrality[25709]
+
+print("________________")
+print("Average Distance: ", average_distance)
+print("________________")
+
+avg_clustering = nx.average_clustering(G)
+print("________________")
+print("Average Clustering: ", avg_clustering)
+print("________________")
+
+triangles_per_node = list(nx.triangles(G).values())
+sum(
+    triangles_per_node
+) / 3
+print("________________")
+print("Triangles Per Node: ", triangles_per_node)
+print("________________")
+
+avg_triangles = np.mean(triangles_per_node);
+print("________________")
+print("Average Triangles: ", avg_triangles)
+print("________________")
+
+median_triangles = np.median(triangles_per_node)
+print("________________")
+print("Median Triangles: ", median_triangles)
+print("________________")
+
+has_bridges = nx.has_bridges(G)
+print("________________")
+print("Has Bridges: ", has_bridges)
+print("________________")
+
+bridges = list(nx.bridges(G))
+amount_bridges = len(bridges)
+print("________________")
+print("Bridges: ", amount_bridges)
+print("________________")
+
+local_bridges = list(nx.local_bridges(G, with_span=False))
+amount_local_bridges = len(local_bridges)
+print("________________")
+print("Local Bridges: ", amount_local_bridges)
+print("________________")
+
+degree_assortativity_coefficient = nx.degree_assortativity_coefficient(G)
+print("________________")
+print("Degree Assortativity Coefficient: ", degree_assortativity_coefficient)
+print("________________")
+
+degree_pearson_correlation_coefficient = nx.degree_pearson_correlation_coefficient(
+    G
+)
+print("________________")
+print("Degree Pearson Correlation Coefficient: ", degree_pearson_correlation_coefficient)
+print("________________")
+
 #___________________________________________________#
 #________Network Path Lengths Visualization_________#
 #___________________________________________________#
@@ -366,6 +437,79 @@ plt.figure(figsize=(15, 8))
 nx.draw_networkx(G, pos=pos, node_size=node_size, with_labels=False, width=0.15)
 plt.axis("off")
 plt.savefig('./betweenness_centralities_visualization.png')
+plt.close()
+
+#__________________________________________________________________________________#
+#_________________________Closeness Centralities Visualization___________________#
+#__________________________________________________________________________________#
+
+plt.figure(figsize=(15, 8))
+plt.hist(closeness_centrality.values(), bins=60)
+plt.title("Closeness Centrality Histogram ", fontdict={"size": 35}, loc="center")
+plt.xlabel("Closeness Centrality", fontdict={"size": 20})
+plt.ylabel("Counts", fontdict={"size": 20})
+plt.savefig('./closeness_centralities_visualization.png')
+plt.close()
+
+#__________________________________________________________________________________#
+#_____________________Min Closeness Centralities Visualization_____________________#
+#__________________________________________________________________________________#
+
+node_size = [
+    v * 50 for v in closeness_centrality.values()
+]  # set up nodes size for a nice graph representation
+plt.figure(figsize=(15, 8))
+nx.draw_networkx(G, pos=pos, node_size=node_size, with_labels=False, width=0.15)
+plt.axis("off")
+plt.savefig('./minimum_centralities_visualization.png')
+plt.close()
+
+#__________________________________________________________________________________#
+#_______________Clustering Coefficient Histogram Visualization_____________________#
+#__________________________________________________________________________________#
+plt.figure(figsize=(15, 8))
+plt.hist(nx.clustering(G).values(), bins=50)
+plt.title("Clustering Coefficient Histogram ", fontdict={"size": 35}, loc="center")
+plt.xlabel("Clustering Coefficient", fontdict={"size": 20})
+plt.ylabel("Counts", fontdict={"size": 20})
+
+plt.savefig('./clustering_coefficient_visualization.png')
+plt.close()
+
+#__________________________________________________________________________________#
+#________________________________Local Bridges_____________________________________#
+#__________________________________________________________________________________#
+plt.figure(figsize=(15, 8))
+nx.draw_networkx(G, pos=pos, node_size=10, with_labels=False, width=0.15)
+nx.draw_networkx_edges(
+    G, pos, edgelist=local_bridges, width=0.5, edge_color="lawngreen"
+)  # green color for local bridges
+nx.draw_networkx_edges(
+    G, pos, edgelist=bridges, width=0.5, edge_color="r"
+)  # red color for bridges
+plt.axis("off")
+
+plt.savefig('./local_bridges_visualization.png')
+plt.close()
+
+#__________________________________________________________________________________#
+#_____________________________Communities Visualization____________________________#
+#__________________________________________________________________________________#
+colors = {}
+
+for com in nx.community.label_propagation_communities(G):
+    color = "#%06X" % randint(0, 0xFFFFFF)  # creates random RGB color
+    for node in list(com):
+        colors[node] = color
+        
+node_colors = [colors[node] for node in G.nodes()]
+
+plt.figure(figsize=(15, 9))
+plt.axis("off")
+nx.draw_networkx(
+    G, pos=pos, node_size=10, with_labels=False, width=0.15, node_color=node_colors
+)
+plt.savefig('./communities_visualization.png')
 plt.close()
 
 # Create a GeoDataFrame
