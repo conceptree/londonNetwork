@@ -35,7 +35,6 @@ modes_colors = {
     'ferry': '#A52A2A'  # Brown
 }
 
-
 # View first five rows of each dataset
 print(cities.head())
 print(stations.head())
@@ -363,6 +362,28 @@ print("________________")
 print("Degree Pearson Correlation Coefficient: ", degree_pearson_correlation_coefficient)
 print("________________")
 
+pos = {node: latlon_to_xy(data['latitude'], data['longitude']) for node, data in G.nodes(data=True)}
+
+# Initialize a dictionary to map node IDs to colors
+node_colors_dict = {}
+
+# Assign colors to communities
+counter = 0
+for com in nx.community.label_propagation_communities(G):
+    color = "#%06X" % randint(0, 0xFFFFFF)  # creates random RGB color
+    counter += 1
+    for node in com:
+        node_colors_dict[node] = color
+
+# Ensure every node in the graph has a corresponding color
+default_color = "#808080"  # Grey color for any nodes not in communities
+node_colors_list = [node_colors_dict.get(node, default_color) for node in G.nodes()]
+
+
+print("________________")
+print("Communities: ", counter)
+print("________________")
+
 #___________________________________________________#
 #________Network Path Lengths Visualization_________#
 #___________________________________________________#
@@ -495,19 +516,10 @@ plt.close()
 #__________________________________________________________________________________#
 #_____________________________Communities Visualization____________________________#
 #__________________________________________________________________________________#
-colors = {}
-
-for com in nx.community.label_propagation_communities(G):
-    color = "#%06X" % randint(0, 0xFFFFFF)  # creates random RGB color
-    for node in list(com):
-        colors[node] = color
-        
-node_colors = [colors[node] for node in G.nodes()]
-
 plt.figure(figsize=(15, 9))
 plt.axis("off")
 nx.draw_networkx(
-    G, pos=pos, node_size=10, with_labels=False, width=0.15, node_color=node_colors
+    G, pos, node_size=10, with_labels=False, width=0.15, node_color=node_colors_list
 )
 plt.savefig('./communities_visualization.png')
 plt.close()
