@@ -524,6 +524,32 @@ nx.draw_networkx(
 plt.savefig('./communities_visualization.png')
 plt.close()
 
+#__________________________________________________________________________________#
+#______________________Communities Visualization (ASYN)____________________________#
+#__________________________________________________________________________________#
+# Create a mapping from node ID to index
+node_to_index = {node: i for i, node in enumerate(G.nodes())}
+
+# Initialize colors list with a default color
+colors = ["#808080" for _ in range(G.number_of_nodes())]  # Grey as default color
+
+# Assign colors to communities
+for com in nx.community.asyn_fluidc(G, 8, seed=0):
+    color = "#%06X" % randint(0, 0xFFFFFF)  # creates random RGB color
+    for node in com:
+        index = node_to_index[node]
+        colors[index] = color
+
+# Visualization
+plt.figure(figsize=(15, 9))
+plt.axis("off")
+nx.draw_networkx(
+    G, pos=pos, node_size=10, with_labels=False, width=0.15, node_color=colors
+)
+
+plt.savefig('./asyn.png')
+plt.close()
+
 # Create a GeoDataFrame
 # Create a GeoDataFrame for the stations
 # Merge expanded_df with transport_modes to get the names of transport modes
